@@ -1,0 +1,11 @@
+{
+  "name": "stream-ingestion",
+  "version": "1.0.0",
+  "description": "efficient, backpressure-aware ingestion and delivery of large data streams.  ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "aelhor",
+  "license": "ISC"
+}
