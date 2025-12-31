@@ -2,10 +2,30 @@
   "name": "stream-ingestion",
   "version": "1.0.0",
   "description": "efficient, backpressure-aware ingestion and delivery of large data streams.  ",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "build:test": "tsc -p tsconfig.test.json",
+    "dev": "tsc --watch",
+    "clean": "node -e \"const fs=require('node:fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('dist-tests',{recursive:true,force:true});\"",
+    "test": "npm run build:test && node dist-tests/tests/ingestion.spec.js",
+    "test:all": "npm run build && npm run build:test && node -e \"const fs=require('node:fs'); const path=require('node:path'); const dir=path.join('dist-tests','tests'); const files=fs.readdirSync(dir).filter(f=>f.endsWith('.js')); if(!files.length){ console.error('No test files found in '+dir); process.exit(1);} for (const f of files){ require(path.resolve(dir,f)); }\"",
+    "test:upload": "npm run build && node tests/run-upload.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "author": "aelhor",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2"
+  }
 }
