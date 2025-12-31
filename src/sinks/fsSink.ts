@@ -4,7 +4,8 @@ import { IngestionSink } from "./IngestionSink";
 export function createFsSink(path: string): IngestionSink {
   const stream: WriteStream = createWriteStream(path);
 
-  return {
+  return { 
+    
     async write(chunk: Buffer) {
       /**
        * stream.write(...) returns:
