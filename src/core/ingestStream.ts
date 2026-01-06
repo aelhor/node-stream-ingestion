@@ -52,6 +52,7 @@ export async function ingestStream(
         let totalBytes = 0
 
         // Read & forward chunks
+        // the loop naturally pauses until the await sink.write(buf) promise resolves.
         for await (const chunk of source) {
             // ensure chunk is Buffer
             const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
