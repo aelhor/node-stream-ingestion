@@ -74,7 +74,21 @@ export async function ingestStream(
         }
     }
     catch (error) {
-        await sink.abort(error as Error)
-        throw error
+        // Only attempt to abort if the sink is valid
+        if (sink && typeof sink.abort === 'function') {
+            try {
+                await sink.abort(error as Error);
+            } catch (abortError) {
+                console.error("Critical: Sink failed to abort properly", abortError);
+            }
+        }
+        throw error; // Always re-throw the original error
+    }
+    finally {
+        // Explicit cleanup: Ensure source is destroyed even if validation failed
+        // or if the loop didn't start.
+        if (!source.destroyed) {
+            source.destroy();
+        }
     }
 }
