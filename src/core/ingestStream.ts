@@ -40,20 +40,39 @@ function validateIngestionParams(source: Readable, sink: IngestionSink) {
         throw new Error("sink must implement all required methods");
     }
 }
+
+
 export async function ingestStream(
     source: Readable,
     sink: IngestionSink,
     options?: IngestionOptions
 ): Promise<IngestionResult> {
+    const onAbort = () => {
+        // The "Emergency Brake"
+        source.destroy(new Error(options?.signal?.reason || 'Aborted'));
+    };
+
+    const startTime = new Date()
+    let totalBytes = 0
+    let durationMs = 0
+
     try {
         validateIngestionParams(source, sink)
+        if (options?.signal?.aborted) {
+            throw new Error(options?.signal?.reason || 'Aborted')
+        }
 
-        const startTime = new Date()
-        let totalBytes = 0
+        // Attach the listener if a signal exists (asynchronous)
+        options?.signal?.addEventListener('abort', onAbort);
 
         // Read & forward chunks
         // the loop naturally pauses until the await sink.write(buf) promise resolves.
         for await (const chunk of source) {
+            // passive check the aborted signal (synchronous)
+            if (options?.signal?.aborted) {
+                throw new Error("Aborted");
+            }
+
             // ensure chunk is Buffer
             const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
 
@@ -67,10 +86,11 @@ export async function ingestStream(
         // Finalize
         await sink.finalize()
         const endTime = new Date()
-        const durationMs = endTime.getTime() - startTime.getTime()
+        durationMs = endTime.getTime() - startTime.getTime()
         return {
             totalBytes,
             duration: durationMs,
+            status: 'success',
         }
     }
     catch (error) {
@@ -82,7 +102,14 @@ export async function ingestStream(
                 console.error("Critical: Sink failed to abort properly", abortError);
             }
         }
-        throw error; // Always re-throw the original error
+        const endTime = new Date()
+        durationMs = endTime.getTime() - startTime.getTime()
+        return {
+            totalBytes: totalBytes,
+            duration: durationMs,
+            status: options?.signal?.aborted ? 'aborted' : 'failed',
+            error: error as Error
+        }
     }
     finally {
         // Explicit cleanup: Ensure source is destroyed even if validation failed
@@ -90,5 +117,7 @@ export async function ingestStream(
         if (!source.destroyed) {
             source.destroy();
         }
+        // The Cleanup: Crucial to prevent memory leaks!
+        options?.signal?.removeEventListener('abort', onAbort);
     }
 }
