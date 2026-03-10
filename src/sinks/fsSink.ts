@@ -13,12 +13,12 @@ export function createFsSink(path: string): IngestionSink {
        * false if the internal buffer is full (backpressure) and you should wait for "drain"
        */
       if (!stream.write(chunk)) {
-        await new Promise(res => stream.once("drain", res));
+        await new Promise(res => stream.once("drain", () => res(undefined)));
       }
     },
 
     async finalize() {
-      await new Promise(res => stream.end(res));
+      await new Promise(res => stream.end(() => res(undefined)));
     },
 
     async abort(err: Error) {
