@@ -73,8 +73,26 @@ export async function ingestStream(
                 throw new Error("Aborted");
             }
 
+
             // ensure chunk is Buffer
-            const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            let buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            let transformationResult: Buffer | null = null;
+            if (options?.transform) {
+                transformationResult = await options.transform(buf);
+                // yielding: take a break to execute the abort listener if a signal is added halfway
+                await new Promise(resolve => setImmediate(resolve))
+                // filter out null values
+                if (transformationResult === null) {
+                    continue;
+                }   
+
+                // THE GATEKEEPER CHECK:
+                // "Did the user cancel while I was busy with the math?"
+                if (options?.signal?.aborted) {
+                    throw new Error(options.signal.reason || "Aborted");
+                }
+                buf = transformationResult;
+            }
 
             // increment totalBytes += chunk.length
             totalBytes += buf.length
